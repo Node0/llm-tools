@@ -1,49 +1,90 @@
+<!DOCTYPE html>
 <html>
 <head>
   <title>Tokens Per Second (tkps) Simulator</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    ::highlight(selection_highlighter_highlighted_selection) {
-      background-color: rgba(255,255,0,1);
-      color: rgba(0,0,0,1);
-    }
-    @media (prefers-color-scheme: dark) {
-      ::highlight(selection_highlighter_highlighted_selection) {
-        background-color: rgba(255,0,255,0.8);
-        color: rgba(255,255,255,1);
-      }
-    }
-    .selection_highlighter_scroll_markers {
-      pointer-events: none;
-      position: fixed;
-      z-index: 2147483647;
-      top: 0;
-      right: 0;
-      width: 16px;
-      height: 100vh;
-    }
+.gradient-buttons .btn {
+  background-image: linear-gradient(to bottom,
+    rgba(255, 255, 255, 0.5),
+    rgba(255, 255, 255, 0.15) 39%,
+    rgba(0, 0, 0, 0.1) 65%, 
+    rgba(0, 0, 0, 0.01));
+  background-repeat: repeat-x;
+  border-radius: 0.65rem;
+}
 
-    .gradient-buttons .btn {
-        background-image: linear-gradient(to bottom,
-          rgba(255,255,255,0.5),
-          rgba(255,255,255,0.15) 39%,
-          rgba(0,0,0,0.1) 65%, 
-          rgba(0,0,0,0.01));
-        background-repeat: repeat-x;
-        border-radius: 0.65rem;
-    }
+.card {
+  margin: 10px;
+  box-shadow: 0 5px 10px -2.5px;
+}
 
-    .card {
-      margin: 10px;
-      box-shadow: 0 5px 10px -2.5px;
-    }
-    .tkps-field {
-      width: 10%;
-    }
+.tkps-field {
+  width: 10%;
+}
 
-    .corpus-selector {
-      width: 30%;
-    }
+.corpus-selector {
+  width: 30%;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 10px;
+  gap: 2rem; /* Adds spacing between the timer and tokens sections */
+}
+
+.timer, .tokens-generated {
+  font-size: 1.5rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center; /* Aligns label and value vertically */
+  gap: 0.5rem; /* Adds spacing between the label and value */
+  min-width: 220px; /* Fixed width to prevent layout shifts */
+  white-space: nowrap; /* Prevents wrapping of content */
+  text-align: center;
+  overflow: hidden; /* Prevents overflow */
+}
+
+.label {
+  white-space: nowrap; /* Ensures labels don't wrap */
+  font-weight: normal; /* Optional: Make labels less bold than values */
+}
+
+.value {
+  flex-grow: 1; /* Allows values to take the available space */
+  text-align: right; /* Right-aligns the values */
+}
+
+#pause-btn {
+  margin-left: 3rem;
+}
+
+.hidden {
+  display: none;
+}
+
+.metric-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.metric-label {
+  font-size: 1.5rem;
+  width: 10rem;
+  text-align: right;
+}
+
+.metric-value {
+  font-size: 1.5rem;
+  font-weight: bold;
+  font-family: monospace;
+  width: 8rem;
+  text-align: left;
+}
+
   </style>
 </head>
 <body style="margin-bottom: 55px !important;">
@@ -57,13 +98,26 @@
         <option value="ataleoftwocities">A Tale of Two Cities</option>
       </select>
       <div class="card-body gradient-buttons">
-        <button class="btn btn-warning my-2" onclick="start()">Prompt</button>
+        <button id="start-btn" class="btn btn-warning my-2" onclick="start()">Prompt</button>
+        <button id="pause-btn" class="btn btn-success my-2 hidden" onclick="togglePauseResume()">Pause</button>
+      </div>
+      <div class="info-row">
+        <div class="metric-container">
+          <span class="metric-label">Elapsed Time:</span>
+          <span id="timer-value" class="metric-value">00:00:000</span>
+        </div>
+        <div class="metric-container">
+          <span class="metric-label">Tokens:</span>
+          <span id="tokens-value" class="metric-value">0</span>
+        </div>
       </div>
     </div>
     <textarea id="output" class="form-control" rows="30" readonly></textarea>
   </div>
 
   <script>
+
+
     const loremIpsum = `What is Lorem Ipsum?
 Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
 
@@ -675,40 +729,121 @@ message. Much of that wouldn’t do for you, Jerry! I say, Jerry! You’d
 be in a Blazing bad way, if recalling to life was to come into fashion,
 Jerry!”`.split(' ');
 
-    let interval;
 
-    function start() {
-      clearInterval(interval);
-      const tps = parseInt(document.getElementById('tps').value, 10);
-      const source = document.getElementById('source').value;
-      const output = document.getElementById('output');
-      output.value = '';
+let interval, timerInterval;
+let userScrolled = false;
+let paused = false;
 
-      const corpus = source === 'lorem' ? loremIpsum : aTaleOfTwoCities;
-      let tokenIndex = 0;
+let startTime;
+let elapsedTime = 0;
+let tokensGenerated = 0;
 
-      function generateToken() {
-        const token = corpus[tokenIndex % corpus.length];
-        tokenIndex++;
-        return token;
+function startTimer() {
+  startTime = Date.now() - elapsedTime;
+  timerInterval = setInterval(() => {
+    elapsedTime = Date.now() - startTime;
+    const minutes = Math.floor(elapsedTime / 60000).toString().padStart(2, "0");
+    const seconds = Math.floor((elapsedTime % 60000) / 1000).toString().padStart(2, "0");
+    const milliseconds = (elapsedTime % 1000).toString().padStart(3, "0");
+    document.getElementById("timer-value").textContent = `${minutes}:${seconds}:${milliseconds}`;
+  }, 50);
+}
+
+function stopTimer() {
+  clearInterval(timerInterval);
+}
+
+function updateTokensGenerated() {
+  document.getElementById("tokens-value").textContent = tokensGenerated;
+}
+
+function togglePauseResume() {
+  paused = !paused;
+
+  const pauseButton = document.getElementById("pause-btn");
+  if (paused) {
+    pauseButton.textContent = "Resume";
+    pauseButton.classList.remove("btn-success");
+    pauseButton.classList.add("btn-danger");
+    stopTimer();
+    clearInterval(interval);
+  } else {
+    pauseButton.textContent = "Pause";
+    pauseButton.classList.remove("btn-danger");
+    pauseButton.classList.add("btn-success");
+    startTimer();
+    startTokenGeneration();
+  }
+}
+
+function start() {
+  // Reset states
+  clearInterval(interval);
+  stopTimer();
+  elapsedTime = 0;
+  tokensGenerated = 0;
+  updateTokensGenerated();
+  startTimer();
+  
+  // Reset pause/resume button
+  paused = false;
+  const pauseButton = document.getElementById("pause-btn");
+  pauseButton.textContent = "Pause";
+  pauseButton.classList.remove("btn-danger", "hidden");
+  pauseButton.classList.add("btn-success");
+
+  const tps = parseInt(document.getElementById("tps").value, 10);
+  const source = document.getElementById("source").value;
+  const output = document.getElementById("output");
+  output.value = "";
+
+  const corpus = source === "lorem" ? loremIpsum : aTaleOfTwoCities;
+  let tokenIndex = 0;
+
+  output.addEventListener("scroll", () => {
+    const currentContentHeight = output.scrollHeight;
+    const scrollOffsetFromTop = output.scrollTop;
+    const textAreaViewportHeight = output.clientHeight;
+
+    const isAtBottom = currentContentHeight - scrollOffsetFromTop === textAreaViewportHeight;
+    userScrolled = !isAtBottom;
+  });
+
+  function generateToken() {
+    const token = corpus[tokenIndex % corpus.length];
+    tokenIndex++;
+    return token;
+  }
+
+  function appendToken(token) {
+    if (!paused) {
+      output.value += token + " ";
+      tokensGenerated++;
+      updateTokensGenerated();
+      if (!userScrolled) {
+        output.scrollTop = output.scrollHeight;
       }
+    }
+  }
 
+  startTokenGeneration = () => {
+    for (let i = 0; i < tps; i++) {
+      setTimeout(() => {
+        appendToken(generateToken());
+      }, (1000 / tps) * i);
+    }
+
+    interval = setInterval(() => {
       for (let i = 0; i < tps; i++) {
         setTimeout(() => {
-          output.value += generateToken() + ' ';
+          appendToken(generateToken());
         }, (1000 / tps) * i);
       }
+    }, 1000);
+  };
 
-      interval = setInterval(() => {
-        for (let i = 0; i < tps; i++) {
-          setTimeout(() => {
-            output.value += generateToken() + ' ';
-          }, (1000 / tps) * i);
-        }
-      }, 1000);
-    }
+  startTokenGeneration();
+}
   </script>
-
-  <canvas class="selection_highlighter_scroll_markers" width="16" height="1117"></canvas>
 </body>
 </html>
