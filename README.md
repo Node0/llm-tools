@@ -4,6 +4,17 @@ This repository contains various single-page applications (SPAs) designed for sp
 
 ---
 
+## Github Pages Demos
+
+#### [Tokens Per Second Simulator](https://node0.github.io/llm-tools/single-page-apps/tkps_simulator.html)
+
+#### [Text Stats Analyzer](https://node0.github.io/llm-tools/single-page-apps/text_stats_analyzer.html)
+
+<br/>
+
+### Local Access Instructions
+___
+
 ## Applications
 
 ### 1. Text Stats Analyzer
