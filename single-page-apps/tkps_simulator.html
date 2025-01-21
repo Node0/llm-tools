@@ -792,7 +792,8 @@ function start() {
   pauseButton.classList.remove("btn-danger", "hidden");
   pauseButton.classList.add("btn-success");
 
-  const tps = parseInt(document.getElementById("tps").value, 10);
+  const tokensPerWord = 1.88;
+  const tps = (parseInt(document.getElementById("tps").value, 10) / tokensPerWord );
   const source = document.getElementById("source").value;
   const output = document.getElementById("output");
   output.value = "";
