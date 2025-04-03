@@ -94,6 +94,9 @@ function analyzeText() {
   // Basic stats
   const numCharacters = text.length;
   const numLines = text.split(/\r?\n/).length;
+  
+  // Word count using regex to split on whitespace
+  const numWords = text.trim().split(/\s+/).filter(word => word.length > 0).length;
 
   // Check if GPTTokenizer_o200k_base is loaded and has the encode method
   if (
@@ -111,10 +114,10 @@ function analyzeText() {
   // Display the results
   const output = `
     <ul>
-      <li><strong>Characters:</strong> ${numCharacters}</li>
       <li><strong>Lines:</strong> ${numLines}</li>
-      <li><strong>Tokens*:</strong> ${numTokens}</li>
-      <li><i>*Per GPT Tokenizer (4o, o1, etc)</i></li>
+      <li><strong>Words:</strong> ${numWords}</li>
+      <li><strong>Tokens*:</strong> ${numTokens}, <i>*Per GPT Tokenizer (4o, o1, etc)</i></li>
+      <li><strong>Characters:</strong> ${numCharacters}</li>
     </ul>
   `;
   document.getElementById('output').innerHTML = output;
