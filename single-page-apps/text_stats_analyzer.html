@@ -55,6 +55,7 @@
     const print = console.log;
   </script>
 
+  <!-- Added tokenizer and decompression libraries inline -->
 
   <!-- Step 1: Include Pako decompression library -->
   <script>
@@ -94,7 +95,10 @@ function analyzeText() {
   const numCharacters = text.length;
   const numLines = text.split(/\r?\n/).length;
 
-  // Check if GPTTokenizer_o200k_base is loaded and has the encode method
+  // Word count using regex to split on whitespace
+  const numWords = text.trim().split(/\s+/).filter(word => word.length > 0).length;
+
+  // Check if GPTTokenizer_o200k_base is loaded
   if (
     typeof GPTTokenizer_o200k_base === 'undefined' ||
     typeof GPTTokenizer_o200k_base.encode !== 'function'
@@ -103,19 +107,64 @@ function analyzeText() {
     return;
   }
 
-  // Directly call the encode function on the global object (not a constructor)
+  // Directly call the encode function on the global object
   const tokens = GPTTokenizer_o200k_base.encode(text);
   const numTokens = tokens.length;
 
-  // Display the results
+  // Create table with Source Code Pro Medium and SemiBold
   const output = `
-    <ul>
-      <li><strong>Characters:</strong> ${numCharacters}</li>
-      <li><strong>Lines:</strong> ${numLines}</li>
-      <li><strong>Tokens*:</strong> ${numTokens}</li>
-      <li><i>*Per GPT Tokenizer (4o, o1, etc)</i></li>
-    </ul>
-  `;
+<style>
+  @font-face {
+    font-family: 'Source Code Pro';
+    font-style: normal;
+    font-weight: 500;
+    src: url(data:font/woff2;base64,BASE64_STRING_FOR_MEDIUM_WEIGHT) format('woff2');
+  }
+
+  @font-face {
+    font-family: 'Source Code Pro';
+    font-style: normal;
+    font-weight: 600;
+    src: url(data:font/woff2;base64,BASE64_STRING_FOR_SEMIBOLD_WEIGHT) format('woff2');
+  }
+
+  .stats-table {
+    font-family: 'Source Code Pro', monospace;
+    border-collapse: collapse;
+    border: none;
+  }
+  .stats-table td {
+    text-align: left;
+    border: none;
+    padding: 2px;
+  }
+  .stats-table .label {
+    font-weight: 600; /* Using SemiBold for labels */
+    padding-right: 10px;
+  }
+  .stats-table .value {
+    font-weight: 500; /* Using Medium for values */
+  }
+</style>
+<table class="stats-table">
+  <tr>
+    <td class="label">Lines:</td>
+    <td class="value">${numLines}</td>
+  </tr>
+  <tr>
+    <td class="label">Words:</td>
+    <td class="value">${numWords}</td>
+  </tr>
+  <tr>
+    <td class="label">Tokens:</td>
+    <td class="value">${numTokens}, <i>*Per GPT Tokenizer (4o, o1, etc)</i></td>
+  </tr>
+  <tr>
+    <td class="label">Characters:</td>
+    <td class="value">${numCharacters}</td>
+  </tr>
+</table>`;
+
   document.getElementById('output').innerHTML = output;
 }
   </script>
