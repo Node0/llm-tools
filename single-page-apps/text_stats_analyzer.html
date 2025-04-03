@@ -111,15 +111,49 @@ function analyzeText() {
   const tokens = GPTTokenizer_o200k_base.encode(text);
   const numTokens = tokens.length;
 
-  // Display the results
+  // Create table with invisible borders for perfect alignment using Source Code Pro
   const output = `
-    <ul>
-      <li><strong>Lines:</strong> ${numLines}</li>
-      <li><strong>Words:</strong> ${numWords}</li>
-      <li><strong>Tokens*:</strong> ${numTokens}, <i>*Per GPT Tokenizer (4o, o1, etc)</i></li>
-      <li><strong>Characters:</strong> ${numCharacters}</li>
-    </ul>
-  `;
+<style>
+  @font-face {
+    font-family: 'Source Code Pro';
+    font-style: normal;
+    font-weight: 400;
+    /* Base64-encoded woff2 font file */
+    src: url(data:font/woff2;base64,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) format('woff2');
+  }
+  .stats-table {
+    font-family: 'Source Code Pro', monospace;
+    border-collapse: collapse;
+    border: none;
+  }
+  .stats-table td {
+    text-align: left;
+    border: none;
+    padding: 2px;
+  }
+  .stats-table .label {
+    padding-right: 10px;
+  }
+</style>
+<table class="stats-table">
+  <tr>
+    <td class="label"><strong>Lines:</strong></td>
+    <td>${numLines}</td>
+  </tr>
+  <tr>
+    <td class="label"><strong>Words:</strong></td>
+    <td>${numWords}</td>
+  </tr>
+  <tr>
+    <td class="label"><strong>Tokens:</strong></td>
+    <td>${numTokens}, <i>*Per GPT Tokenizer (4o, o1, etc)</i></td>
+  </tr>
+  <tr>
+    <td class="label"><strong>Characters:</strong></td>
+    <td>${numCharacters}</td>
+  </tr>
+</table>`;
+
   document.getElementById('output').innerHTML = output;
 }
   </script>
