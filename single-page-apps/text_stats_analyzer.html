@@ -32,6 +32,38 @@
       list-style-type: none; /* Remove bullet points */
       padding-left: 0;
     }
+  /* Custom Font definitions for output styles */
+  @font-face {
+    font-family: 'Source Code Pro';
+    font-style: normal;
+    font-weight: 500;
+    src: url(data:font/woff2;base64,BASE64_STRING_FOR_MEDIUM_WEIGHT) format('woff2');
+  }
+
+  @font-face {
+    font-family: 'Source Code Pro';
+    font-style: normal;
+    font-weight: 600;
+    src: url(data:font/woff2;base64,BASE64_STRING_FOR_SEMIBOLD_WEIGHT) format('woff2');
+  }
+
+  .stats-table {
+    font-family: 'Source Code Pro', monospace;
+    border-collapse: collapse;
+    border: none;
+  }
+  .stats-table td {
+    text-align: left;
+    border: none;
+    padding: 2px;
+  }
+  .stats-table .label {
+    font-weight: 600; /* Using SemiBold for labels */
+    padding-right: 10px;
+  }
+  .stats-table .value {
+    font-weight: 500; /* Using Medium for values */
+  }
   </style>
 </head>
 <body class="bg-light">
