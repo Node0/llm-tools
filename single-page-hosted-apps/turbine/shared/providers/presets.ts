@@ -7,7 +7,7 @@
  * and for local backends the host/port/path.
  */
 
-import type { ApiType, ConnectionSpec, Locality } from '../types.ts'
+import type { ApiType, ConnectionSpec, Locality, ProviderFlavor } from '../types.ts'
 import { hasProvider } from './registry.ts'
 
 export interface Preset {
@@ -56,6 +56,24 @@ export function classifyLocality(baseUrl: string): Locality {
   } catch {
     return 'remote'
   }
+}
+
+/** Dialect from the preset name or the host; the wire format for reasoning and discovery hangs off this. */
+export function deriveFlavor(apiType: ApiType, name: string, baseUrl: string): ProviderFlavor {
+  if (apiType === 'ollama') return 'ollama'
+  if (apiType === 'anthropic') return 'anthropic'
+  let host = ''
+  try {
+    host = new URL(baseUrl).hostname.toLowerCase()
+  } catch {
+    /* validated elsewhere */
+  }
+  const n = name.toLowerCase()
+  if (host.endsWith('openrouter.ai') || n === 'openrouter') return 'openrouter'
+  if (host.endsWith('api.openai.com') || n === 'openai') return 'openai'
+  if (n === 'vllm' || n.startsWith('vllm')) return 'vllm'
+  if (n === 'llamacpp' || n.startsWith('llama')) return 'llamacpp'
+  return 'generic'
 }
 
 export interface UrlParts {
@@ -116,6 +134,8 @@ export function normalizeConnection(input: unknown): ConnectionSpec {
   const headers = sanitizeStringRecord(c.headers)
   const options = c.options && typeof c.options === 'object' && !Array.isArray(c.options) ? (c.options as Record<string, unknown>) : undefined
   const timeout = Number(c.timeout_ms)
+  const flavors: ProviderFlavor[] = ['ollama', 'openrouter', 'openai', 'vllm', 'llamacpp', 'anthropic', 'generic']
+  const declared = typeof c.flavor === 'string' && flavors.includes(c.flavor as ProviderFlavor) ? (c.flavor as ProviderFlavor) : null
   const spec: ConnectionSpec = {
     name,
     api_type,
@@ -124,6 +144,7 @@ export function normalizeConnection(input: unknown): ConnectionSpec {
     ctx_len,
     locality: classifyLocality(base_url),
     requires_key: Boolean(c.requires_key),
+    flavor: declared ?? deriveFlavor(api_type, name, base_url),
     ...(headers ? { headers } : {}),
     ...(options ? { options } : {}),
     ...(Number.isFinite(timeout) && timeout > 0 ? { timeout_ms: Math.floor(timeout) } : {}),

@@ -86,7 +86,10 @@ code { font-family: var(--mono); font-size: 0.9em; background: var(--panel-2); p
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 0.9rem 1rem; }
 .panel-head { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
 .panel-head h2 { margin: 0; }
+/* the template compiler drops the space between adjacent inline spans (Node0/diamondjs#15); space them in CSS */
+.panel-head h2 .lbl + .muted { margin-left: 0.35rem; }
 .panel-head .btn { margin-left: auto; }
+.panel-head .spacer + .btn, .panel-head .btn + .btn { margin-left: 0.4rem; }
 .two-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.9rem; align-items: start; }
 .col { display: flex; flex-direction: column; gap: 0.9rem; min-width: 0; }
 .col-grow { min-width: 0; }
@@ -97,6 +100,7 @@ code { font-family: var(--mono); font-size: 0.9em; background: var(--panel-2); p
 .btn { font: inherit; padding: 0.45rem 0.9rem; border-radius: var(--radius); border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); cursor: pointer; }
 .btn:hover:not(:disabled) { filter: brightness(1.06); }
 .btn:disabled { opacity: 0.5; cursor: default; }
+.btn-danger:disabled { opacity: 0.3; }
 .btn-primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .btn-ghost { background: transparent; }
 .btn-danger { border-color: var(--danger); color: var(--danger); background: transparent; }
@@ -206,3 +210,28 @@ progress.bar::-moz-progress-bar { background: var(--accent); }
 /* hover help: dotted underline marks anything with an explanation */
 label[title] .lbl, h2[title] .lbl, .stat[title] .k, .check[title] .lbl { text-decoration: underline dotted; text-decoration-color: var(--muted); text-underline-offset: 3px; cursor: help; }
 label[title] { cursor: help; }
+
+/* model parameters */
+.params-group { margin-top: 0.6rem; }
+.params-group h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 0.4rem 0 0.4rem; }
+.params-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 0.6rem 0.8rem; }
+.param { cursor: help; }
+.param .param-row { display: flex; align-items: center; gap: 0.3rem; }
+.param .param-row input { flex: 1; min-width: 0; }
+.param-hint { font-size: 0.74rem; color: var(--muted); line-height: 1.3; }
+.btn-xs { padding: 0.1rem 0.45rem; font-size: 0.8rem; line-height: 1.2; }
+
+/* clear-output confirmation */
+.hidden { display: none !important; }
+.banner.danger { border-color: var(--danger); color: var(--ink); flex-direction: column; align-items: stretch; gap: 0.7rem; }
+.banner.danger .banner-title { color: var(--danger); font-weight: 700; }
+.banner.danger .banner-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+.slide-host { flex: 1; min-width: 320px; max-width: 640px; }
+.slide-track { position: relative; width: 100%; height: 44px; border-radius: 22px; background: var(--panel-2); border: 1px solid var(--line); overflow: hidden; user-select: none; touch-action: none; }
+.slide-fill { position: absolute; inset: 0 auto 0 0; width: 0; background: rgba(198, 40, 40, 0.18); pointer-events: none; }
+.slide-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; color: var(--muted); pointer-events: none; letter-spacing: 0.02em; }
+.slide-knob { position: absolute; top: 3px; left: 3px; width: 36px; height: 36px; border-radius: 50%; border: none; background: var(--danger); color: #fff; font-size: 1.3rem; line-height: 1; cursor: grab; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.35); padding: 0; }
+.slide-knob:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.slide-track.dragging .slide-knob { cursor: grabbing; }
+.slide-track.armed { border-color: var(--danger); }
+.slide-track.armed .slide-label { color: var(--danger); font-weight: 600; }

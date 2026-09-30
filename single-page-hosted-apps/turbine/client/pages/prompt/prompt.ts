@@ -14,6 +14,7 @@ import { TEMPLATE_VARS } from '../../../shared/engine/template.ts'
 import { validateWindow } from '../../../shared/engine/validators.ts'
 import { SourceViewer } from '../../components/source-viewer.ts'
 import { TailFollower } from '../../components/tail-follower.ts'
+import { ModelParamsForm } from '../../components/model-params.ts'
 import { api } from '../../services/api.ts'
 import { documents } from '../../services/documents.ts'
 import { job } from '../../services/job.ts'
@@ -40,6 +41,7 @@ function fmtDuration(ms: number | null): string {
 export class PromptPage extends Component {
   createTemplate = (T as unknown as { createTemplate: (this: PromptPage) => HTMLElement }).createTemplate
   private viewer = new SourceViewer({ compact: true })
+  private paramsForm = new ModelParamsForm()
   private tail = new TailFollower()
   private previewAbort: AbortController | null = null
   private lastUserTemplateEl: HTMLTextAreaElement | null = null
@@ -69,6 +71,8 @@ export class PromptPage extends Component {
     const root = this.getElement()
     const slot = root?.querySelector<HTMLElement>('.viewer-host')
     if (slot) this.viewer.mount(slot)
+    const paramsSlot = root?.querySelector<HTMLElement>('.params-host')
+    if (paramsSlot) this.paramsForm.mount(paramsSlot)
     // The second textarea is the user template; remember it for caret insertion.
     const areas = root?.querySelectorAll<HTMLTextAreaElement>('textarea') ?? []
     this.lastUserTemplateEl = areas[1] ?? null
@@ -81,6 +85,7 @@ export class PromptPage extends Component {
     this.previewAbort?.abort()
     this.stopGenTimer()
     this.tail.detach()
+    this.paramsForm.unmount()
     this.viewer.unmount()
     super.unmount()
   }
@@ -193,12 +198,6 @@ export class PromptPage extends Component {
   set carryChars(v: unknown) {
     prompt.state.spec.carry.chars = Math.max(0, Math.round(num(v, 0)))
   }
-  get temperature(): number {
-    return prompt.state.spec.generation.temperature
-  }
-  set temperature(v: unknown) {
-    prompt.state.spec.generation.temperature = Math.max(0, Math.min(2, num(v, 0.2)))
-  }
   get maxTokens(): number {
     return prompt.state.spec.generation.max_tokens
   }
@@ -265,6 +264,45 @@ export class PromptPage extends Component {
   }
   set maxAttempts(v: unknown) {
     prompt.state.spec.retry.maxAttempts = Math.max(1, Math.min(10, Math.round(num(v, 3))))
+  }
+
+  // ── model parameters ─────────────────────────────────────────────────────
+  get modelName(): string {
+    return session.state.connection?.model ?? ''
+  }
+  get modelLoading(): boolean {
+    return prompt.state.modelInfoStatus === 'loading'
+  }
+  get refreshLabel(): string {
+    return this.modelLoading ? 'Refreshing…' : 'Refresh from backend'
+  }
+  get modelFacts(): string {
+    const i = prompt.state.modelInfo
+    if (!i) return ''
+    const parts: string[] = []
+    if (i.context_length) parts.push(`context ${i.context_length.toLocaleString()} tok`)
+    if (i.max_output_tokens) parts.push(`max output ${i.max_output_tokens.toLocaleString()} tok`)
+    const ctx = session.state.connection?.ctx_len
+    if (ctx && i.context_length && ctx < i.context_length) parts.push(`connection budgets ${ctx.toLocaleString()}`)
+    return parts.join(' · ')
+  }
+  get modelSource(): string {
+    const i = prompt.state.modelInfo
+    if (!i) return prompt.state.modelInfoStatus === 'idle' ? '' : ''
+    const n = i.parameters.length
+    return `Discovered via ${i.source}: ${n} adjustable parameter${n === 1 ? '' : 's'}${i.capabilities?.length ? ` · capabilities: ${i.capabilities.join(', ')}` : ''}.`
+  }
+  get modelError(): string {
+    return prompt.state.modelInfoStatus === 'error' ? prompt.state.modelInfoError : ''
+  }
+  get modelNotes(): string[] {
+    return prompt.state.modelInfo?.notes ?? []
+  }
+  async refreshModel(): Promise<void> {
+    await prompt.discoverModel(true)
+  }
+  resetModelParams(): void {
+    prompt.resetModelParams()
   }
 
   // ── plan ─────────────────────────────────────────────────────────────────
@@ -409,6 +447,8 @@ export class PromptPage extends Component {
           temperature: spec.generation.temperature,
           max_tokens: spec.generation.max_tokens,
           num_ctx: spec.generation.num_ctx,
+          reasoning: spec.generation.reasoning ?? 'off',
+          params: spec.generation.params,
           signal,
           onToken: (chunk) => {
             this.previewOutput += chunk

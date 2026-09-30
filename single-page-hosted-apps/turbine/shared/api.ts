@@ -16,6 +16,7 @@
  * │  GET    /api/providers               → ProvidersInfo                     │
  * │  POST   /api/providers/test          ConnectRequest → ProviderTestResult │
  * │  POST   /api/providers/models        ConnectRequest → { models }         │
+ * │  POST   /api/providers/describe      ConnectRequest | {} → ModelInfo (session connection when body is empty) │
  * │ Documents                                                                │
  * │  POST   /api/docs                    multipart{file} | DocCreateJson → DocInfo │
  * │  GET    /api/docs                    → DocInfo[]                          │
@@ -42,7 +43,7 @@
  * Errors: every non-2xx response is `{ error: string, code?: string }`.
  */
 
-import type { ApiType, ChatMessage, ConnectionSpec, JobSpec, PlanEstimate, TokenUsage, ValidationResult, WindowEvent, WindowPlan, WindowRecord } from './types.ts'
+import type { ApiType, ChatMessage, ConnectionSpec, JobSpec, ModelInfo, PlanEstimate, TokenUsage, ValidationResult, WindowEvent, WindowPlan, WindowRecord } from './types.ts'
 import type { WindowDefaults } from './defaults.ts'
 import type { Preset } from './providers/presets.ts'
 
@@ -114,6 +115,12 @@ export interface ProvidersInfo {
   remote_host_allowlist: string[]
   /** Under public deployment, local connections must be driven from the browser. */
   local_execution: Execution
+}
+
+/** Response of POST /api/providers/describe. `execution: 'browser'` means the client must call describeModel() itself. */
+export interface DescribeResult {
+  info: ModelInfo | null
+  execution: Execution
 }
 
 export interface ProviderTestResult {
@@ -232,6 +239,7 @@ export const API = {
   providers: '/api/providers',
   providersTest: '/api/providers/test',
   providersModels: '/api/providers/models',
+  providersDescribe: '/api/providers/describe',
   docs: '/api/docs',
   doc: (id: string) => `/api/docs/${encodeURIComponent(id)}`,
   docText: (id: string) => `/api/docs/${encodeURIComponent(id)}/text`,

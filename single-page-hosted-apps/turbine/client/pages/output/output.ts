@@ -1,10 +1,11 @@
 /** OutputPage — watch the pump run, save what it has produced at any time. */
-import { Component, DiamondCore } from '@diamondjs/runtime'
+import { Component, DiamondCore, reactive } from '@diamondjs/runtime'
 import * as T from './output.diamond.html'
 import { job, type ChipVM } from '../../services/job.ts'
 import { nav, ui } from '../../services/nav.ts'
 import { tip as tipText } from '../../services/tooltips.ts'
 import { TailFollower } from '../../components/tail-follower.ts'
+import { SlideToConfirm } from '../../components/slide-to-confirm.ts'
 
 function fmtDuration(ms: number | null): string {
   if (ms === null || !Number.isFinite(ms)) return '—'
@@ -20,6 +21,8 @@ export class OutputPage extends Component {
 
   private liveTail = new TailFollower()
   private outTail = new TailFollower()
+  private slider = new SlideToConfirm({ label: 'Slide right to clear output', onConfirm: () => this.clearNow() })
+  @reactive confirmClear = false
 
   constructor(_params?: Record<string, unknown>) {
     super()
@@ -39,12 +42,43 @@ export class OutputPage extends Component {
       this.outTail.stick()
     })
     this.registerCleanup(cleanup)
+    // The confirmation banner is hidden with a class rather than `if`, so its slider host always exists.
+    const slideHost = this.getElement()?.querySelector<HTMLElement>('.slide-host')
+    if (slideHost) this.slider.mount(slideHost)
   }
 
   override unmount(): void {
+    this.slider.unmount()
     this.liveTail.detach()
     this.outTail.detach()
     super.unmount()
+  }
+
+  // ── clear output (guarded) ───────────────────────────────────────────────
+  get canClear(): boolean {
+    return job.canClear
+  }
+  get clearBannerClass(): string {
+    return this.confirmClear ? 'banner danger' : 'banner danger hidden'
+  }
+  askClear(): void {
+    if (!job.canClear) return
+    this.confirmClear = true
+    this.slider.reset()
+    requestAnimationFrame(() => this.getElement()?.querySelector<HTMLElement>('.slide-knob')?.focus())
+  }
+  keepOutput(): void {
+    this.confirmClear = false
+    this.slider.reset()
+  }
+  clearNow(): void {
+    try {
+      job.clear()
+      this.confirmClear = false
+      nav.toast('Output cleared. The job\'s checkpoint stays on the server under data/jobs.')
+    } catch (e) {
+      nav.toast(e instanceof Error ? e.message : String(e))
+    }
   }
 
   tip(path: string): string {

@@ -4,11 +4,21 @@
  * System prompt rides in the top-level `system` field, not the messages array.
  * Streaming is SSE with typed events; we only need content_block_delta,
  * message_delta (usage + stop_reason) and error.
+ *
+ * Reasoning maps onto the `thinking` parameter, whose shape depends on the
+ * model generation:
+ *   4.6 and newer   thinking: { type: 'adaptive' } + output_config.effort for levels;
+ *                   off is { type: 'disabled' } where accepted, { type: 'between_tools' }
+ *                   on Sonnet 5.5, and simply omitted on models that always think
+ *   Haiku 4.5, 4.5 and older   thinking: { type: 'enabled', budget_tokens } / omitted for off
+ * Sampling knobs (temperature, top_p, top_k) are rejected by 4.7 and newer, so
+ * they are only sent to older generations.
  */
 
 import { ProviderError } from '../types.ts'
-import type { ChatMessage, ConnectionSpec, GenerateOptions, GenerateResult, HealthResult, Provider } from '../types.ts'
-import { type FetchLike, now, readLines, request, trimBase } from './http.ts'
+import type { ChatMessage, ConnectionSpec, GenerateOptions, GenerateResult, HealthResult, ModelInfo, Provider, ReasoningSetting } from '../types.ts'
+import { type FetchLike, now, readLines, request, trimBase, tryGetJson } from './http.ts'
+import { OPENAI_STYLE, routeParams } from './params.ts'
 import { registerProvider } from './registry.ts'
 
 interface AnthropicEvent {
@@ -21,6 +31,29 @@ interface AnthropicEvent {
   stop_reason?: string
   error?: { message?: string }
 }
+
+export interface AnthropicFamily {
+  /** Thinking is configured with adaptive + effort (4.6+) rather than a token budget. */
+  adaptive: boolean
+  /** How "off" is expressed. */
+  off: 'disabled' | 'between_tools' | 'omit' | 'always'
+  /** Whether temperature / top_p / top_k are accepted at all. */
+  sampling: boolean
+  label: string
+}
+
+/** Classify a model id into the generation that decides the thinking and sampling wire format. */
+export function anthropicFamily(model: string): AnthropicFamily {
+  const m = model.toLowerCase()
+  if (/claude-(fable|mythos)/.test(m)) return { adaptive: true, off: 'always', sampling: false, label: 'Fable/Mythos: thinking is always on; depth via effort' }
+  if (/claude-opus-5-5/.test(m)) return { adaptive: true, off: 'always', sampling: false, label: 'Opus 5.5: thinking is always on; depth via effort' }
+  if (/claude-sonnet-5-5/.test(m)) return { adaptive: true, off: 'between_tools', sampling: false, label: 'Sonnet 5.5: off sends thinking.type=between_tools' }
+  if (/claude-(opus-5|opus-4-8|opus-4-7|sonnet-5)(?![.\d-]*5)/.test(m) || /claude-(opus-5|opus-4-[78]|sonnet-5)($|-\d{8}|$)/.test(m)) return { adaptive: true, off: 'disabled', sampling: false, label: 'adaptive thinking; sampling parameters are rejected' }
+  if (/claude-(opus|sonnet)-4-6/.test(m)) return { adaptive: true, off: 'disabled', sampling: true, label: '4.6: adaptive thinking; sampling still accepted' }
+  return { adaptive: false, off: 'omit', sampling: true, label: 'budget_tokens generation' }
+}
+
+const BUDGETS: Record<Exclude<ReasoningSetting, 'off'>, number> = { on: 4096, low: 2048, medium: 8192, high: 24576 }
 
 export class AnthropicProvider implements Provider {
   readonly spec: ConnectionSpec
@@ -46,21 +79,54 @@ export class AnthropicProvider implements Provider {
     }
   }
 
-  async generate(messages: ChatMessage[], opts: GenerateOptions = {}): Promise<GenerateResult> {
+  /** The request body for one call. Tests inspect this through a fake fetch. */
+  buildBody(messages: ChatMessage[], opts: GenerateOptions): Record<string, unknown> {
     const stream = typeof opts.onToken === 'function'
+    const fam = anthropicFamily(this.spec.model)
+    const r: ReasoningSetting = opts.reasoning ?? 'off'
     const system = messages.filter((m) => m.role === 'system').map((m) => m.content).join('\n\n')
     const turns = messages.filter((m) => m.role !== 'system').map((m) => ({ role: m.role, content: m.content }))
+    const { known, extra } = routeParams(opts.params, [OPENAI_STYLE.temperature, OPENAI_STYLE.top_p, OPENAI_STYLE.top_k])
+    let maxTokens = opts.max_tokens ?? 1024
     const body: Record<string, unknown> = {
       model: this.spec.model,
-      max_tokens: opts.max_tokens ?? 1024,
       messages: turns,
       stream,
       ...(system ? { system } : {}),
-      ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
       ...(opts.stop ? { stop_sequences: opts.stop } : {}),
       ...(this.spec.options ?? {}),
+      ...extra,
     }
+    // Thinking
+    if (fam.adaptive) {
+      if (r === 'off') {
+        if (fam.off === 'disabled') body.thinking = { type: 'disabled' }
+        else if (fam.off === 'between_tools') body.thinking = { type: 'between_tools' }
+        // 'always': omit — the model thinks regardless; lowest effort keeps it short.
+        if (fam.off === 'always') body.output_config = { effort: 'low' }
+      } else {
+        body.thinking = { type: 'adaptive' }
+        if (r !== 'on') body.output_config = { effort: r }
+      }
+    } else if (r !== 'off') {
+      const budget = BUDGETS[r]
+      if (maxTokens <= budget) maxTokens = budget + 1024
+      body.thinking = { type: 'enabled', budget_tokens: budget }
+    }
+    body.max_tokens = maxTokens
+    // Sampling: only where the generation accepts it, and never alongside a thinking budget (temperature must be 1 there).
+    const thinkingOn = body.thinking !== undefined && (body.thinking as { type: string }).type !== 'disabled' && (body.thinking as { type: string }).type !== 'between_tools'
+    if (fam.sampling && !(thinkingOn && !fam.adaptive)) {
+      if (opts.temperature !== undefined) body.temperature = opts.temperature
+      Object.assign(body, known)
+    }
+    for (const k of Object.keys(body)) if (body[k] === undefined) delete body[k]
+    return body
+  }
 
+  async generate(messages: ChatMessage[], opts: GenerateOptions = {}): Promise<GenerateResult> {
+    const stream = typeof opts.onToken === 'function'
+    const body = this.buildBody(messages, opts)
     const t0 = now()
     const res = await request(
       this.fetchImpl,
@@ -131,6 +197,33 @@ export class AnthropicProvider implements Provider {
     } catch (e) {
       return { ok: false, latency_ms: Math.round(now() - t0), detail: e instanceof Error ? e.message : String(e) }
     }
+  }
+
+  /** GET /v1/models/{id}: context window and output cap; thinking/sampling rules from the model generation. */
+  async describeModel(): Promise<ModelInfo> {
+    const fam = anthropicFamily(this.spec.model)
+    const info: ModelInfo = {
+      model: this.spec.model,
+      api_type: 'anthropic',
+      flavor: 'anthropic',
+      reasoning: fam.off === 'always'
+        ? { supported: true, mandatory: true, default_enabled: true, settings: ['on', 'low', 'medium', 'high'], note: `${fam.label}. "off" is not available; low effort is the closest.` }
+        : fam.adaptive
+          ? { supported: true, mandatory: false, default_enabled: fam.off !== 'disabled', settings: ['off', 'on', 'low', 'medium', 'high'], note: fam.label }
+          : { supported: true, mandatory: false, default_enabled: false, settings: ['off', 'on', 'low', 'medium', 'high'], note: `${fam.label}: levels become budget_tokens (2k / 4k / 8k / 24k).` },
+      parameters: fam.sampling ? [OPENAI_STYLE.temperature, OPENAI_STYLE.top_p, OPENAI_STYLE.top_k].map((d) => ({ ...d })) : [],
+      defaults: {},
+      source: 'preset (Anthropic model generation rules)',
+      notes: fam.sampling ? [] : ['This generation rejects temperature, top_p and top_k; they are not sent.'],
+    }
+    const m = await tryGetJson<{ id?: string; max_input_tokens?: number; max_tokens?: number; capabilities?: unknown }>(this.fetchImpl, `${this.base}/v1/models/${encodeURIComponent(this.spec.model)}`, this.headers(), this.key)
+    if (m?.id) {
+      info.source = 'anthropic /v1/models + generation rules'
+      if (typeof m.max_input_tokens === 'number') info.context_length = m.max_input_tokens
+      if (typeof m.max_tokens === 'number') info.max_output_tokens = m.max_tokens
+      if (Array.isArray(m.capabilities)) info.capabilities = m.capabilities.map(String)
+    }
+    return info
   }
 }
 

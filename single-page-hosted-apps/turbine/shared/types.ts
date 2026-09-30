@@ -18,6 +18,13 @@ export type ApiType = 'openai' | 'ollama' | 'anthropic'
 /** Where the backend lives relative to the *user's* machine. Drives execution placement. */
 export type Locality = 'local' | 'remote'
 
+/**
+ * Which dialect an api_type speaks. `openai` is a family: OpenRouter, OpenAI, vLLM and
+ * llama.cpp agree on /chat/completions but differ on model discovery and on how
+ * reasoning is switched on and off. The flavor is derived from the preset or the host.
+ */
+export type ProviderFlavor = 'ollama' | 'openrouter' | 'openai' | 'vllm' | 'llamacpp' | 'anthropic' | 'generic'
+
 /** A fully resolved inference connection. Never carries an API key. */
 export interface ConnectionSpec {
   /** Human label, e.g. 'ollama-local', 'openrouter'. Used in provenance records. */
@@ -38,6 +45,8 @@ export interface ConnectionSpec {
   timeout_ms?: number
   /** Anthropic only. */
   anthropic_version?: string
+  /** Dialect within the api_type; drives discovery and the reasoning wire format. */
+  flavor?: ProviderFlavor
 }
 
 export type ChatRole = 'system' | 'user' | 'assistant'
@@ -47,15 +56,80 @@ export interface ChatMessage {
   content: string
 }
 
+/**
+ * Reasoning ("thinking") control, normalized across backends. `off` is Turbine's default:
+ * a formatting pump wants the transformation, not the deliberation. `on` means the
+ * backend's default depth; the levels map to effort where the backend has one.
+ */
+export type ReasoningSetting = 'off' | 'on' | 'low' | 'medium' | 'high'
+
+export type ParamValue = number | string | boolean | string[]
+
 export interface GenerateOptions {
   temperature?: number
   max_tokens?: number
   /** Ollama num_ctx. Ignored by other providers. */
   num_ctx?: number
   stop?: string[]
+  /** Normalized reasoning control; each provider maps it to its own wire format. */
+  reasoning?: ReasoningSetting
+  /** Backend-specific knobs keyed by wire name (top_p, min_p, repetition_penalty, seed, …). */
+  params?: Record<string, ParamValue>
   signal?: AbortSignal
   /** Streaming callback. When present the provider streams and calls this per chunk. */
   onToken?: (chunk: string) => void
+}
+
+// ─── Model discovery ─────────────────────────────────────────────────────────
+
+export type ParamKind = 'number' | 'integer' | 'boolean' | 'enum' | 'text'
+export type ParamGroup = 'sampling' | 'repetition' | 'determinism' | 'context' | 'other'
+
+/** One adjustable knob, as the UI renders it and as the provider routes it. */
+export interface ParamDescriptor {
+  /** Wire name, e.g. 'top_p', 'num_ctx', 'repetition_penalty'. */
+  key: string
+  label: string
+  kind: ParamKind
+  group: ParamGroup
+  min?: number
+  max?: number
+  step?: number
+  options?: string[]
+  /** The backend's or model's own default when it reported one. */
+  default?: ParamValue
+  help: string
+  /** 'backend' = the endpoint said this model accepts it; 'preset' = Turbine's curated list for the dialect. */
+  source: 'backend' | 'preset'
+}
+
+export interface ReasoningInfo {
+  supported: boolean | 'unknown'
+  /** The model always reasons; `off` cannot be sent. */
+  mandatory?: boolean
+  /** Which normalized settings make sense for this model. */
+  settings: ReasoningSetting[]
+  /** What the backend does when Turbine sends nothing. */
+  default_enabled?: boolean
+  note?: string
+}
+
+/** What a backend told us about a model, plus Turbine's curated knowledge of the dialect. */
+export interface ModelInfo {
+  model: string
+  api_type: ApiType
+  flavor: ProviderFlavor
+  /** Reported maximum context, when the backend exposes it. */
+  context_length?: number
+  max_output_tokens?: number
+  reasoning: ReasoningInfo
+  parameters: ParamDescriptor[]
+  /** Backend defaults by wire key (Ollama modelfile parameters, OpenRouter default_parameters, llama.cpp props). */
+  defaults: Record<string, ParamValue>
+  capabilities?: string[]
+  /** Which endpoint the facts came from, for the UI. */
+  source: string
+  notes: string[]
 }
 
 export interface TokenUsage {
@@ -83,6 +157,8 @@ export interface Provider {
   generate(messages: ChatMessage[], opts?: GenerateOptions): Promise<GenerateResult>
   listModels(): Promise<string[]>
   health(): Promise<HealthResult>
+  /** Ask the backend what this model accepts: context, output cap, reasoning, sampling knobs. Never throws; degrades to the dialect's curated list. */
+  describeModel(): Promise<ModelInfo>
 }
 
 /** Structured provider failure. `retryable` drives the runner's retry policy. */
@@ -153,6 +229,10 @@ export interface GenerationSpec {
   temperature: number
   max_tokens: number
   num_ctx?: number
+  /** Default 'off'. */
+  reasoning?: ReasoningSetting
+  /** Backend knobs from the Model parameters panel, keyed by wire name. */
+  params?: Record<string, ParamValue>
 }
 
 export interface RetrySpec {

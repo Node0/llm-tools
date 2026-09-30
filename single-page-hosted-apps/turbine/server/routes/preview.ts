@@ -75,6 +75,8 @@ export function previewRoutes(ctx: ServerContext) {
                 temperature: p.spec.generation.temperature,
                 max_tokens: p.spec.generation.max_tokens,
                 num_ctx: p.spec.generation.num_ctx,
+                reasoning: p.spec.generation.reasoning ?? 'off',
+                params: p.spec.generation.params,
                 signal: request.signal,
                 onToken: (chunk) => send({ type: 'token', chunk }),
               })

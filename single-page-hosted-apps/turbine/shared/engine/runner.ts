@@ -183,6 +183,8 @@ export async function* runJob(text: string, spec: JobSpec, provider: Provider, c
           temperature,
           max_tokens: spec.generation.max_tokens,
           num_ctx: spec.generation.num_ctx,
+          reasoning: spec.generation.reasoning ?? 'off',
+          params: spec.generation.params,
           signal: abortSignal,
           onToken: (chunk) => queue.push({ type: 'window-token', index, chunk }),
         })

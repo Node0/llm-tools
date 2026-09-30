@@ -20,6 +20,7 @@ import {
   type ProvidersInfo,
   type SessionCreateRequest,
   type SessionInfo,
+  type DescribeResult,
 } from '../../shared/api.ts'
 
 export class ApiRequestError extends Error {
@@ -75,6 +76,7 @@ export const api = {
     info: () => request<ProvidersInfo>('GET', API.providers),
     test: (body: ConnectRequest) => request<ProviderTestResult>('POST', API.providersTest, body),
     models: (body: ConnectRequest) => request<{ models: string[] }>('POST', API.providersModels, body),
+    describe: (body: Partial<ConnectRequest> = {}) => request<DescribeResult>('POST', API.providersDescribe, body),
   },
   docs: {
     list: () => request<DocInfo[]>('GET', API.docs),

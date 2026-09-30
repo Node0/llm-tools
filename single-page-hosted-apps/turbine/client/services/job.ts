@@ -489,10 +489,42 @@ export const job = {
     const a = document.createElement('a')
     a.href = url
     a.download = job.outputName()
-    document.body.appendChild(a)
+    a.rel = 'noopener'
+    // A blob: URL is same-origin, so DiamondJS's document-level link interceptor would treat this
+    // click as SPA navigation and land on not-found (Node0/diamondjs#14). The anchor stays detached
+    // and the click stops at the element, so the interceptor never sees it.
+    a.addEventListener('click', (e) => e.stopPropagation(), { once: true })
     a.click()
-    a.remove()
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    setTimeout(() => URL.revokeObjectURL(url), 1500)
+    nav.toast(`Saved ${job.outputName()}`)
+  },
+
+  /** Can the Output view be cleared right now? Never while the job is running, paused or waiting on a key. */
+  get canClear(): boolean {
+    return state.job !== null && !job.isActive
+  },
+
+  /**
+   * Forget this job in this browser and empty the Output view. The server keeps the job and its
+   * checkpoint file under data/jobs; only the browser's memory of it goes away.
+   */
+  clear(): void {
+    if (!state.job) return
+    if (job.isActive) throw new Error('Pause or cancel the job before clearing its output.')
+    closeSocket()
+    abort?.abort()
+    abort = null
+    browserRunning = false
+    pausedFlag = false
+    resumeWaiters = []
+    setJob(null)
+    applyRecords([])
+    state.stats = null
+    state.etaMs = null
+    state.lastError = null
+    state.busy = false
+    state.paused = false
+    state.socket = 'closed'
   },
 
   async copy(): Promise<void> {

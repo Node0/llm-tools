@@ -126,3 +126,13 @@ export async function* readLines(res: Response): AsyncGenerator<string> {
 export function now(): number {
   return typeof performance !== 'undefined' ? performance.now() : Date.now()
 }
+
+/** GET JSON, or null on any failure — discovery must never break a connection. */
+export async function tryGetJson<T>(fetchImpl: FetchLike, url: string, headers: Record<string, string>, secret: string | null, timeoutMs = 15_000): Promise<T | null> {
+  try {
+    const res = await request(fetchImpl, url, { headers, timeout_ms: timeoutMs }, secret)
+    return (await res.json()) as T
+  } catch {
+    return null
+  }
+}

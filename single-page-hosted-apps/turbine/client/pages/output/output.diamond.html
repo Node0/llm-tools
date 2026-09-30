@@ -1,7 +1,7 @@
 <section class="page output-page">
   <div class="panel" if="!hasJob">
     <h2>No job yet</h2>
-    <p class="muted">Set up a prompt and press <em>Start job</em> on the Prompt tab. Finished output appears here and can be saved at any time.</p>
+    <p class="muted">Set up a prompt and press the “Start job” button on the Prompt tab. Finished output appears here and can be saved at any time.</p>
   </div>
 
   <div if="hasJob">
@@ -29,8 +29,21 @@
       <span class="spacer"></span>
       <button type="button" class="btn btn-primary" disabled.to-view="!hasOutput" click.calls="save()" title.to-view="tip('output.controls.save')">Save output (${outputName})</button>
       <button type="button" class="btn" disabled.to-view="!hasOutput" click.calls="copy()" title.to-view="tip('output.controls.copy')">Copy</button>
+      <button type="button" class="btn btn-danger" disabled.to-view="!canClear" click.calls="askClear()" title.to-view="tip('output.controls.clear')">Clear output</button>
     </div>
     <p class="error" if="lastError">${lastError}</p>
+
+    <div classname.to-view="clearBannerClass">
+      <span class="banner-title">Clear output?</span>
+      <span>You're about to clear all sequentially assembled results. By clearing output, you will lose any sequentially assembled data, please consider saving your work now. Please click below to save your work.</span>
+      <div class="banner-actions">
+        <button type="button" class="btn btn-primary" disabled.to-view="!hasOutput" click.calls="save()" title.to-view="tip('output.clear.save')">Save output (${outputName})</button>
+        <button type="button" class="btn btn-ghost" click.calls="keepOutput()" title.to-view="tip('output.clear.keep')">Keep output</button>
+      </div>
+      <div class="banner-actions">
+        <div class="slide-host" title.to-view="tip('output.clear.slide')"></div>
+      </div>
+    </div>
 
     <div class="panel">
       <div class="panel-head">

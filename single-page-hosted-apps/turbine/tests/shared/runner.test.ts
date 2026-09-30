@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { ProviderError } from '../../shared/types.ts'
-import type { ChatMessage, ConnectionSpec, GenerateOptions, GenerateResult, JobSpec, Provider, WindowEvent, WindowRecord } from '../../shared/types.ts'
+import type { ChatMessage, ConnectionSpec, GenerateOptions, GenerateResult, JobSpec, ModelInfo, Provider, WindowEvent, WindowRecord } from '../../shared/types.ts'
 import { assembleOutput, outputFilename } from '../../shared/engine/assemble.ts'
 import { planWindows } from '../../shared/engine/planner.ts'
 import { buildMessages, carryFrom, cleanOutput, runJob } from '../../shared/engine/runner.ts'
@@ -43,6 +43,9 @@ class FakeProvider implements Provider {
   }
   async listModels(): Promise<string[]> { return ['fake-1'] }
   async health() { return { ok: true } }
+  async describeModel(): Promise<ModelInfo> {
+    return { model: 'fake-1', api_type: 'openai', flavor: 'generic', reasoning: { supported: false, settings: ['off'] }, parameters: [], defaults: {}, source: 'fake', notes: [] }
+  }
 }
 
 const doc = Array.from({ length: 6 }, (_, i) => `Para ${i + 1} alpha beta gamma delta epsilon zeta eta theta iota kappa.`).join('\n\n')

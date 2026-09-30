@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/turbine-hero.png" alt="Turbine: a turbine rotor with blue streams of text flowing in and gold streams flowing out" width="900">
+</p>
+
 # Turbine
 
 A programmable sliding-window **map/reduce pump for long documents**. Turbine reads a source text, tiles it into windows, applies your prompt to each window (in parallel, or sequentially with carry-forward), validates the result, checkpoints every window, and concatenates the outputs into `<source>__transformed.md`.
@@ -48,6 +52,42 @@ While a preview streams, the token counter refreshes once a second. The output p
 **Min similarity** (the conserve validator) strips Markdown from the output, normalises case, quotes, dashes and punctuation on both sides, splits into words, and scores `2·LCS / (|input| + |output|)` where LCS is the longest common subsequence of words. 1.0 means every word survived in order; 0.95 tolerates roughly one word in twenty added, dropped or changed.
 
 Hover help for every field lives in `client/tooltips.json`, keyed `view → component → field`, so wording can be revised without touching templates.
+
+### The context window and the sliding window
+
+Two different things share the word "window":
+
+- **The model's context window** is how many tokens the backend can hold at once, prompt and answer together. You set it on the Connect page as *Context length*; it becomes the connection's `ctx_len`.
+- **Turbine's sliding windows** are the slices the planner cuts the document into: focus plus context on either side.
+
+They meet in the plan. Every planned prompt (instructions + template + context before + focus + context after + carry) must fit inside `ctx_len` together with the output limit, or the plan shows an error and *Start job* is disabled. Nothing is ever silently truncated on Turbine's side.
+
+What the backend does with `ctx_len` depends on the dialect:
+
+| Backend | What `ctx_len` does at runtime |
+|---|---|
+| **Ollama** | Sent as `options.num_ctx` on every request, so the runtime KV cache matches the plan. Set 65,536 on the Connect page and gemma4 is loaded with a 64k context, no more, no less. Override it per job with the `num_ctx` knob in Model parameters. Changing it makes Ollama reload the model; memory scales with it. |
+| **vLLM / llama.cpp** | The context is fixed when the server starts (`--max-model-len`, `-c`). Turbine reads it back (`max_model_len`, `/props`) and warns when your `ctx_len` is larger than the server allows. |
+| **OpenRouter / OpenAI / Anthropic** | The model's context is fixed by the provider. Turbine reads it from the model list and shows it next to your `ctx_len`; keep `ctx_len` at or below it. |
+
+A smaller `ctx_len` therefore means smaller windows (or fewer of them fitting), a smaller *Auto* output limit, and, on Ollama, a smaller memory footprint.
+
+### Model parameters
+
+The *Model parameters* panel on the Prompt tab is populated by asking the backend, not from a fixed list:
+
+| Backend | Discovery endpoint | What it yields |
+|---|---|---|
+| Ollama | `POST /api/show` | capabilities (`thinking`), modelfile defaults (`temperature`, `top_p`, `top_k`, `min_p`, penalties), the architecture's context length |
+| OpenRouter | `GET /api/v1/models` | per-model `supported_parameters`, `context_length`, `max_completion_tokens`, `default_parameters`, and a `reasoning` descriptor (mandatory? supported efforts?) |
+| OpenAI | model id rules + `/v1/models` | reasoning models (o-series, GPT-5) take `reasoning_effort` and `max_completion_tokens` and reject sampling knobs |
+| vLLM | `GET /v1/models` | `max_model_len` |
+| llama.cpp | `GET /props` | `n_ctx` and the server's default sampling settings |
+| Anthropic | `GET /v1/models/{id}` + generation rules | context and output caps; which generations accept `thinking: disabled`, `between_tools`, or always think |
+
+Reasoning is one normalized control (**off**, **on**, **low**, **medium**, **high**) that each provider translates: Ollama `think`, OpenRouter `reasoning.effort` / `reasoning.enabled:false`, OpenAI `reasoning_effort`, vLLM and llama.cpp `chat_template_kwargs.enable_thinking`, Anthropic `thinking` + `output_config.effort`. **Off is the default for every backend**; where a model always reasons the panel says so and offers the lowest effort instead.
+
+Every other knob is a descriptor with bounds and plain-language help. A cleared knob is not sent, so the backend's own default applies. *Reset defaults* clears them all, sets reasoning off and temperature back to the config default, which is the right starting point for OpenRouter and Ollama alike.
 
 ---
 

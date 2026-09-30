@@ -1,7 +1,7 @@
 import { mkdtempSync } from 'node:fs'
 import { join } from 'node:path'
 import { configFromObject, type TurbineConfig } from '../../server/config.ts'
-import type { ChatMessage, ConnectionSpec, GenerateOptions, GenerateResult, Provider } from '../../shared/types.ts'
+import type { ChatMessage, ConnectionSpec, GenerateOptions, GenerateResult, ModelInfo, Provider } from '../../shared/types.ts'
 
 export const SCRATCH = '/private/tmp/claude-501/-Users-joehacobian-my-repos-llm-tools/cbeeb49d-0f04-445f-acad-45e73e5e6246/scratchpad'
 
@@ -70,6 +70,9 @@ export class FakeProvider implements Provider {
   }
   async health() {
     return { ok: true, detail: 'fake', latency_ms: 0 }
+  }
+  async describeModel(): Promise<ModelInfo> {
+    return { model: this.spec.model, api_type: this.spec.api_type, flavor: 'generic', reasoning: { supported: false, settings: ['off'] }, parameters: [], defaults: {}, source: 'fake', notes: [] }
   }
 }
 

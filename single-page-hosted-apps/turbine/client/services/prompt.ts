@@ -6,7 +6,8 @@
  * document, and persisted to localStorage so a reload doesn't lose the prompt.
  */
 import { DiamondCore } from '@diamondjs/runtime'
-import type { CharRange, JobSpec, PlanEstimate, WindowPlan } from '../../shared/types.ts'
+import type { CharRange, JobSpec, ModelInfo, ParamValue, PlanEstimate, ReasoningSetting, WindowPlan } from '../../shared/types.ts'
+import { api } from './api.ts'
 import { defaultJobSpec, FALLBACK_WINDOW_DEFAULTS } from '../../shared/defaults.ts'
 import { estimatePlan, planWindows } from '../../shared/engine/planner.ts'
 import { CHARS_PER_TOKEN, charsForTokens, sanitizeCharsPerToken, tokensForChars } from '../../shared/engine/tokens.ts'
@@ -35,6 +36,12 @@ export interface PromptState {
   cptSource: 'default' | 'tokenizer' | 'model'
   /** Derive generation.max_tokens from the largest focus (1.5× + margin, bounded by the context). */
   maxTokensAuto: boolean
+  /** What the backend says the current model accepts. */
+  modelInfo: ModelInfo | null
+  modelInfoStatus: 'idle' | 'loading' | 'ready' | 'error'
+  modelInfoError: string
+  /** connection+model the info belongs to, so a changed connection triggers rediscovery. */
+  modelInfoKey: string
 }
 
 interface Persisted {
@@ -74,7 +81,16 @@ export const state = DiamondCore.reactive<PromptState>({
   charsPerToken: CHARS_PER_TOKEN,
   cptSource: 'default',
   maxTokensAuto: true,
+  modelInfo: null,
+  modelInfoStatus: 'idle',
+  modelInfoError: '',
+  modelInfoKey: '',
 })
+
+function connectionKey(): string {
+  const c = session.state.connection
+  return c ? `${c.api_type}|${c.base_url}|${c.model}` : ''
+}
 
 let windows: WindowPlan[] = []
 let planTimer: ReturnType<typeof setTimeout> | undefined
@@ -171,6 +187,8 @@ export const prompt = {
     const defaults = session.state.config?.window_defaults ?? FALLBACK_WINDOW_DEFAULTS
     const persisted = loadPersisted()
     const spec = persisted?.spec ?? defaultJobSpec(documents.state.doc?.name ?? 'document', defaults)
+    if (!spec.generation.reasoning) spec.generation.reasoning = 'off'
+    if (!spec.generation.params) spec.generation.params = {}
     state.spec = spec
     state.measuredCps = persisted?.measuredCps ?? null
     state.charsPerToken = sanitizeCharsPerToken(persisted?.charsPerToken)
@@ -203,6 +221,14 @@ export const prompt = {
           state.onlySelection = false
         }
       }
+    })
+
+    // Discover what the model accepts whenever the connection (or its model) changes.
+    DiamondCore.effect(() => {
+      const key = connectionKey()
+      const connected = session.state.connected
+      if (!key || !connected) return
+      if (key !== state.modelInfoKey) void prompt.discoverModel()
     })
 
     // Re-plan when anything that shapes the plan changes.
@@ -289,6 +315,66 @@ export const prompt = {
     const exact = countTokensMemo(text)
     if (exact !== null) return { tokens: exact, exact: true }
     return { tokens: tokensForChars(text.length, state.charsPerToken), exact: false }
+  },
+
+  /** Ask the backend (via the server, or directly for browser-run connections) what this model accepts. */
+  async discoverModel(force = false): Promise<void> {
+    const key = connectionKey()
+    if (!key) return
+    if (!force && state.modelInfoKey === key && state.modelInfoStatus === 'ready') return
+    state.modelInfoStatus = 'loading'
+    state.modelInfoError = ''
+    state.modelInfoKey = key
+    try {
+      let info: ModelInfo | null = null
+      if (session.state.execution === 'browser') info = await session.providerForBrowser().describeModel()
+      else {
+        const r = await api.providers.describe()
+        info = r.execution === 'browser' ? await session.providerForBrowser().describeModel() : r.info
+      }
+      if (connectionKey() !== key) return // connection changed underneath us
+      state.modelInfo = info
+      state.modelInfoStatus = 'ready'
+      // If the model cannot switch reasoning off, don't keep asking it to.
+      const settings = info?.reasoning.settings ?? []
+      if (info && settings.length && !settings.includes(state.spec.generation.reasoning ?? 'off')) {
+        state.spec.generation.reasoning = settings[0]
+      }
+    } catch (e) {
+      if (connectionKey() !== key) return
+      state.modelInfo = null
+      state.modelInfoStatus = 'error'
+      state.modelInfoError = e instanceof Error ? e.message : String(e)
+    }
+  },
+
+  setReasoning(r: ReasoningSetting): void {
+    state.spec.generation.reasoning = r
+  },
+
+  paramValue(key: string): ParamValue | undefined {
+    if (key === 'temperature') return state.spec.generation.temperature
+    return state.spec.generation.params?.[key]
+  },
+
+  /** Set a knob (null clears it so the backend's own default applies). Temperature is a first-class field. */
+  setParam(key: string, value: ParamValue | null): void {
+    if (key === 'temperature') {
+      if (typeof value === 'number') state.spec.generation.temperature = Math.max(0, Math.min(2, value))
+      return
+    }
+    const params = state.spec.generation.params ?? (state.spec.generation.params = {})
+    if (value === null) delete params[key]
+    else params[key] = value
+  },
+
+  /** Turbine's defaults: reasoning off, temperature from config, every other knob left to the backend. */
+  resetModelParams(): void {
+    const defaults = session.state.config?.window_defaults ?? FALLBACK_WINDOW_DEFAULTS
+    state.spec.generation.temperature = defaults.temperature
+    state.spec.generation.params = {}
+    const settings = state.modelInfo?.reasoning.settings ?? ['off']
+    state.spec.generation.reasoning = settings.includes('off') ? 'off' : settings[0]
   },
 
   /** Human label for where the current chars-per-token figure came from. */

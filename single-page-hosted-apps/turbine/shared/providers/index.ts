@@ -11,7 +11,10 @@ export { OpenAICompatibleProvider } from './openai.ts'
 export { OllamaProvider } from './ollama.ts'
 export { AnthropicProvider } from './anthropic.ts'
 export {
-  PRESETS, presetById, classifyLocality, parseBaseUrl, buildBaseUrl, normalizeConnection, connectionFromPreset,
+  PRESETS, presetById, classifyLocality, deriveFlavor, parseBaseUrl, buildBaseUrl, normalizeConnection, connectionFromPreset,
   ConnectionValidationError, type Preset, type UrlParts,
 } from './presets.ts'
+export { PRESET_PARAMS, OPENAI_STYLE, OLLAMA_OPTIONS, REASONING_SETTINGS, coerceParam, parseOllamaParameters, routeParams, sanitizeParams } from './params.ts'
+export { anthropicFamily, type AnthropicFamily } from './anthropic.ts'
+export { ollamaThink } from './ollama.ts'
 export { scrubSecret, type FetchLike } from './http.ts'

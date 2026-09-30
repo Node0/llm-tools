@@ -45,7 +45,6 @@
       "concurrency": "How many windows run at the same time in map mode. A local machine usually handles one or two; hosted APIs handle more.",
       "carry_kind": "In fold mode, what each window gets from the one before it: the tail of the previous output, or nothing.",
       "carry_chars": "How many characters of the previous output to carry forward.",
-      "temperature": "How adventurous the model is. 0 is literal and repeatable; higher values add variety. Formatting jobs want it low.",
       "max_tokens": "The most the model may write for one window. Auto keeps it at about 1.5× the largest slice plus a margin, so nothing is cut off. A manual value smaller than a slice will truncate that window's output.",
       "max_tokens_auto": "Let Turbine size the output limit from the largest slice in the plan and the model's context. Untick to set it by hand.",
       "validator": "A check on every window's output before it is accepted. conserve: the words must survive and only formatting may change. length ratio: the output must stay within a size band of the input.",
@@ -75,6 +74,13 @@
       "messages": "The exact messages the model receives after the template is filled in.",
       "output": "The model's answer, streaming in. The pane follows the newest text while you are at the bottom; scroll up to read, scroll back down to follow again.",
       "tokens": "Tokens generated so far, refreshed about once a second. When the model finishes, its exact count replaces the running figure."
+    },
+    "model": {
+      "panel": "Knobs the backend reports for the connected model, discovered from its own endpoints (Ollama's show, OpenRouter's model list, vLLM and llama.cpp metadata, Anthropic's model info). Anything you leave blank is not sent, so the backend's defaults apply.",
+      "refresh": "Ask the backend again. Do this after pulling a new model or changing the connection.",
+      "reset": "Back to Turbine's defaults: reasoning off, temperature from config, every other knob cleared so the backend decides.",
+      "reasoning": "Whether the model thinks before answering. Off is Turbine's default for every backend: formatting jobs want the transformation, not the deliberation, and thinking tokens cost time and money. Where a model always reasons, off is not offered and the lowest effort is used instead.",
+      "knob_clear": "Clear this knob so it is not sent and the backend's own default applies."
     }
   },
   "output": {
@@ -91,7 +97,8 @@
       "resume": "Continue from the checkpoint. Finished windows are not redone.",
       "cancel": "Stop the job for good. Everything finished so far stays saved and can still be downloaded.",
       "save": "Download the output as it exists right now, named after the source with __transformed added. Windows still pending are marked in the file.",
-      "copy": "Copy the current output to the clipboard."
+      "copy": "Copy the current output to the clipboard.",
+      "clear": "Forget this job in this browser and empty the Output view. Disabled while the job is running or paused. The server keeps the job's checkpoint file, but nothing here will show it again."
     },
     "windows": {
       "chips": "One square per window in document order. Grey is pending, blue is running, green is done, amber failed validation, red produced nothing usable. Click one to run it again.",
@@ -100,6 +107,11 @@
     "output": {
       "text": "All finished windows stitched together in order. Failed windows pass their original text through behind a marker so nothing is silently lost.",
       "live": "Windows currently being generated, streaming in. Follows the newest text while you are at the bottom."
+    },
+    "clear": {
+      "save": "Download the assembled output right now, exactly as shown, before clearing.",
+      "slide": "Drag the red knob all the way to the right to clear. Letting go early cancels. Keyboard: focus the knob and press End.",
+      "keep": "Close this warning and keep the output."
     }
   },
   "connect": {

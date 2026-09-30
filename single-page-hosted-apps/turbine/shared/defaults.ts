@@ -3,7 +3,8 @@
  * window_defaults (server) or the /api/config payload (browser).
  */
 
-import type { CarrySpec, JobSpec, RunMode, SnapMode, ValidatorSpec } from './types.ts'
+import type { CarrySpec, JobSpec, ReasoningSetting, RunMode, SnapMode, ValidatorSpec } from './types.ts'
+import { sanitizeParams } from './providers/params.ts'
 import { charsForTokens } from './engine/tokens.ts'
 import { DEFAULT_SYSTEM_PROMPT, DEFAULT_USER_TEMPLATE } from './engine/template.ts'
 
@@ -50,7 +51,7 @@ export function defaultJobSpec(sourceName: string, d: WindowDefaults = FALLBACK_
     mode: d.mode,
     concurrency: d.concurrency,
     carry: { ...d.carry },
-    generation: { temperature: d.temperature, max_tokens: d.max_tokens },
+    generation: { temperature: d.temperature, max_tokens: d.max_tokens, reasoning: 'off', params: {} },
     validator: { ...d.validator },
     retry: { maxAttempts: 3, temperatureDecay: 0.5 },
     joiner: d.joiner,
@@ -98,6 +99,8 @@ export function validateJobSpec(input: unknown, limits: { max_concurrency: numbe
       temperature: num(gen.temperature ?? 0.2, 'generation.temperature', 0, 2),
       max_tokens: Math.floor(num(gen.max_tokens ?? 2048, 'generation.max_tokens', 16, 1_000_000)),
       ...(gen.num_ctx !== undefined && gen.num_ctx !== null && gen.num_ctx !== '' ? { num_ctx: Math.floor(num(gen.num_ctx, 'generation.num_ctx', 256, 10_000_000)) } : {}),
+      reasoning: (['off', 'on', 'low', 'medium', 'high'] as ReasoningSetting[]).includes(gen.reasoning as ReasoningSetting) ? (gen.reasoning as ReasoningSetting) : 'off',
+      params: sanitizeParams(gen.params),
     },
     validator: {
       kind: vkind,
