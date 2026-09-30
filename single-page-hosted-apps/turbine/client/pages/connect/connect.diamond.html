@@ -1,0 +1,120 @@
+<section class="page narrow connect-page">
+  <div class="panel" if="!ready">
+    <h1>Turbine</h1>
+    <p class="muted">Reaching the server…</p>
+    <p class="error" if="initError">${initError}</p>
+  </div>
+
+  <div if="ready">
+    <div class="panel welcome" if="showWelcome">
+      <h1>Welcome back</h1>
+      <p class="muted" if="fingerprintChanged">This browser looks a little different from last time (an update, perhaps). Confirm your connection below.</p>
+      <div class="saved">
+        <div class="saved-line"><span class="k">Connection</span><span class="v">${savedSummary}</span></div>
+        <div class="saved-line" if="savedKeyNote"><span class="k">API key</span><span class="v">${savedKeyNote}</span></div>
+      </div>
+      <div class="field" if="unlockNeedsPassphrase">
+        <label>Passphrase
+          <input type="password" autocomplete="current-password" placeholder="the short phrase you chose" value.two-way="unlockPass" keyup.calls="onUnlockKey($event)">
+        </label>
+      </div>
+      <p class="error" if="error">${error}</p>
+      <div class="actions">
+        <button type="button" class="btn btn-primary" disabled.to-view="busy" click.calls="unlock()" title.to-view="tip('connect.unlock')">${unlockLabel}</button>
+        <button type="button" class="btn btn-ghost" click.calls="useDifferent()" title.to-view="tip('connect.different')">Use a different connection</button>
+        <button type="button" class="btn btn-ghost btn-danger-text" click.calls="forget()" title.to-view="tip('connect.forget')">Forget this browser's saved connection</button>
+      </div>
+    </div>
+
+    <div class="panel" if="showForm">
+      <h1 if="firstVisit">It looks like this is your first visit.</h1>
+      <h1 else-if="!firstVisit">Choose an inference provider</h1>
+      <p class="muted">Turbine sends every window to the backend you pick here. Nothing is stored server-side beyond your session; remote keys are encrypted in <em>this</em> browser under a passphrase only you know.</p>
+
+      <div class="radio-row">
+        <label class="radio" title.to-view="tip('connect.mode.local')"><input type="radio" name="mode" checked.to-view="isLocal" click.calls="setMode('local')"><span class="lbl">Use local inference backend</span></label>
+        <label class="radio" title.to-view="tip('connect.mode.remote')"><input type="radio" name="mode" checked.to-view="isRemote" click.calls="setMode('remote')"><span class="lbl">Remote inference provider</span></label>
+      </div>
+
+      <div if="isLocal" class="subform">
+        <div class="grid-fields">
+          <label title.to-view="tip('connect.local.backend')"><span class="lbl">Backend</span>
+            <select value.two-way="localPresetSel" change.calls="onLocalPreset()">
+              <option value="ollama">Ollama</option>
+              <option value="vllm">vLLM</option>
+              <option value="llamacpp">llama.cpp server</option>
+            </select>
+          </label>
+          <label title.to-view="tip('connect.local.scheme')"><span class="lbl">Scheme</span>
+            <select value.two-way="schemeSel">
+              <option value="http">http</option>
+              <option value="https">https</option>
+            </select>
+          </label>
+          <label title.to-view="tip('connect.local.host')"><span class="lbl">URL / host</span><input type="text" placeholder="localhost" value.two-way="host"></label>
+          <label title.to-view="tip('connect.local.port')"><span class="lbl">Port</span><input type="text" inputmode="numeric" placeholder="11434" value.two-way="port"></label>
+          <label title.to-view="tip('connect.local.path')"><span class="lbl">Path</span><input type="text" placeholder="/v1 (vLLM, llama.cpp) or empty" value.two-way="path"></label>
+        </div>
+        <p class="hint mono">${composedBaseUrl}</p>
+        <p class="hint" if="publicLocalNote">${publicLocalNote}</p>
+      </div>
+
+      <div if="isRemote" class="subform">
+        <div class="grid-fields">
+          <label title.to-view="tip('connect.remote.provider')"><span class="lbl">Provider</span>
+            <select value.two-way="remotePresetSel" change.calls="onRemotePreset()">
+              <option value="openrouter">OpenRouter</option>
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic</option>
+              <option value="custom-openai">Custom OpenAI-compatible</option>
+              <option repeat.for="c of serverConnections" value.to-view="c.optionValue">${c.label}</option>
+            </select>
+          </label>
+          <label title.to-view="tip('connect.remote.base_url')"><span class="lbl">Base URL</span><input type="text" placeholder="https://…" value.two-way="baseUrl" disabled.to-view="usesServerConnection"></label>
+        </div>
+        <p class="hint" if="keyUrl">Keys: ${keyUrl}</p>
+        <p class="hint" if="usesServerConnection">This connection's key is held by the Turbine server; no key or passphrase is needed here.</p>
+      </div>
+
+      <div class="grid-fields">
+        <label title.to-view="tip('connect.model')"><span class="lbl">Model</span>
+          <input type="text" placeholder="model id" value.two-way="model">
+        </label>
+        <label title.to-view="tip('connect.ctx_len')"><span class="lbl">Context length (tokens)</span><input type="number" min="1024" step="1" value.two-way="ctxLen"></label>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn btn-ghost btn-sm" disabled.to-view="busy" click.calls="listModels()" title.to-view="tip('connect.list_models')">List models</button>
+        <select if="hasModels" change.calls="pickModel($event)">
+          <option value="">— pick from ${modelCount} models —</option>
+          <option repeat.for="m of models" value.to-view="m">${m}</option>
+        </select>
+      </div>
+
+      <div class="subform" if="needsKey">
+        <div class="grid-fields">
+          <label title.to-view="tip('connect.remote.api_key')"><span class="lbl">API key</span><input type="password" autocomplete="off" placeholder="sk-…" value.two-way="apiKey"></label>
+        </div>
+        <div if="canEncrypt">
+          <p class="hint">Choose a short passphrase you'll easily remember. It encrypts the key inside this browser (AES-GCM, PBKDF2); the server only ever holds it in memory, and forgets it when the session timer runs out.</p>
+          <div class="grid-fields">
+            <label title.to-view="tip('connect.remote.passphrase')"><span class="lbl">Passphrase</span><input type="password" autocomplete="new-password" value.two-way="passphrase"></label>
+            <label>Repeat passphrase<input type="password" autocomplete="new-password" value.two-way="passphrase2"></label>
+          </div>
+        </div>
+        <p class="warn" if="!canEncrypt">This page is not a secure context (https or localhost), so the browser cannot encrypt the key. It will be sent to the server for this session only and you will need to enter it again next time.</p>
+      </div>
+
+      <p class="hint" if="ttlNote">${ttlNote}</p>
+
+      <div class="actions">
+        <button type="button" class="btn" disabled.to-view="busy" click.calls="testConnection()" title.to-view="tip('connect.test')">${testLabel}</button>
+        <span classname.to-view="testClass" if="testResult">${testResult}</span>
+      </div>
+      <p class="error" if="error">${error}</p>
+      <div class="actions">
+        <button type="button" class="btn btn-primary" disabled.to-view="!canSubmit" click.calls="connect()" title.to-view="tip('connect.connect')">${connectLabel}</button>
+        <button type="button" class="btn btn-ghost" if="!firstVisit" click.calls="cancelForm()">Back</button>
+      </div>
+    </div>
+  </div>
+</section>

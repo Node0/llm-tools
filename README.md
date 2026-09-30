@@ -1,14 +1,22 @@
-# Single Page Applications (SPA) Collection
+# LLM Tools
 
-This repository contains various single-page applications (SPAs) designed for specific utility tasks. Each application is a lightweight, self-contained tool implemented using HTML, CSS, and JavaScript.
+Small tools for working with language models.
+
+- **`single-page-static-apps/`** — self-contained HTML files; open them in a browser, no server.
+- **`single-page-hosted-apps/`** — apps that need a server. Currently [Turbine](single-page-hosted-apps/turbine/README.md), a programmable sliding-window map/reduce pump for long documents (DiamondJS + Elysia/Bun).
+- **`python-tools/`**, **`cli-tools/`** — scripts.
+
+## Static single-page apps
+
+Each application is a lightweight, self-contained tool implemented using HTML, CSS, and JavaScript.
 
 ---
 
 ## Github Pages Demos
 
-#### [Tokens Per Second Simulator](https://node0.github.io/llm-tools/single-page-apps/tkps_simulator.html)
+#### [Tokens Per Second Simulator](https://node0.github.io/llm-tools/single-page-static-apps/tkps_simulator.html)
 
-#### [Text Stats Analyzer](https://node0.github.io/llm-tools/single-page-apps/text_stats_analyzer.html)
+#### [Text Stats Analyzer](https://node0.github.io/llm-tools/single-page-static-apps/text_stats_analyzer.html)
 
 <br/>
 
@@ -69,4 +77,4 @@ Contributions to enhance or extend the functionality of these SPAs are welcome! 
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the AGPL v3 License. See [LICENSE](LICENSE).

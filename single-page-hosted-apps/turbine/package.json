@@ -1,0 +1,55 @@
+{
+  "name": "turbine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Turbine — a programmable sliding-window map/reduce pump for long documents. DiamondJS front end, Elysia (Bun) back end.",
+  "license": "AGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Node0/llm-tools.git",
+    "directory": "single-page-hosted-apps/turbine"
+  },
+  "scripts": {
+    "dev": "bun run scripts/dev.ts",
+    "dev:server": "bun --watch server/index.ts",
+    "dev:client": "parcel watch --target client --no-cache",
+    "build": "bun run build:client",
+    "build:client": "rm -rf dist/client && parcel build --target client --no-cache",
+    "start": "bun server/index.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "route-check": "route-check client/app.routes.ts",
+    "stink-check": "stink-check",
+    "check": "bun run typecheck && bun run route-check && bun run stink-check && bun test",
+    "corpus": "bun run tools/fetch_corpus.ts"
+  },
+  "browserslist": [
+    "last 2 Chrome versions",
+    "last 2 Firefox versions",
+    "last 2 Safari versions",
+    "last 2 Edge versions"
+  ],
+  "targets": {
+    "client": {
+      "source": "client/index.html",
+      "distDir": "dist/client",
+      "publicUrl": "/",
+      "context": "browser",
+      "outputFormat": "esmodule",
+      "includeNodeModules": true,
+      "scopeHoist": true,
+      "sourceMap": true
+    }
+  },
+  "dependencies": {
+    "@diamondjs/app": "2.2.3",
+    "elysia": "^1.4.30",
+    "tiktoken": "^1.0.22"
+  },
+  "devDependencies": {
+    "@diamondjs/dev": "2.2.3",
+    "@types/bun": "^1.4.2",
+    "typescript": "^5.5.0"
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "public_deployment": false,
+
+  "server": {
+    "host": "0.0.0.0",
+    "port": 7331,
+    "static_dir": "dist/client",
+    "data_dir": "data",
+    "trust_proxy": false
+  },
+
+  "session": {
+    "ttl_seconds": 3600,
+    "extend_on_activity": false,
+    "cookie_name": "turbine_sid"
+  },
+
+  "limits": {
+    "max_upload_bytes": 26214400,
+    "max_concurrency": 8,
+    "max_jobs_per_session": 4
+  },
+
+  "window_defaults": {
+    "focus_tokens": 1500,
+    "context_before_tokens": 400,
+    "context_after_tokens": 400,
+    "snap": "paragraph",
+    "mode": "map",
+    "concurrency": 2,
+    "carry": { "kind": "tail", "chars": 1200 },
+    "temperature": 0.2,
+    "max_tokens": 2048,
+    "validator": { "kind": "none" },
+    "joiner": "\n\n"
+  },
+
+  "remote_host_allowlist": [
+    "openrouter.ai",
+    "api.openai.com",
+    "api.anthropic.com"
+  ],
+
+  "inference_service_connections": {
+    "ollama-local": {
+      "api_type": "ollama",
+      "base_url": "http://localhost:11434",
+      "default_model": "qwen3.6:35b-a3b-mxfp8",
+      "default_ctx_len": 32768,
+      "default_max_tokens": 2048,
+      "default_temperature": 0.2,
+      "options": { "num_ctx": 32768 }
+    },
+    "openrouter": {
+      "api_type": "openai",
+      "base_url": "https://openrouter.ai/api/v1",
+      "default_model": "qwen/qwen3-235b-a22b",
+      "default_ctx_len": 131072,
+      "default_max_tokens": 2048,
+      "default_temperature": 0.2,
+      "api_key_env": "OPENROUTER_API_KEY"
+    }
+  }
+}

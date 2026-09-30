@@ -1,0 +1,28 @@
+<div class="shell">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">🌀</span>
+      <span class="brand-name">Turbine</span>
+      <span class="brand-sub">sliding-window map / reduce</span>
+    </div>
+
+    <nav class="tabs" aria-label="Views">
+      <a href="/source" classname.to-view="tabClass('source')">Source</a>
+      <a href="/prompt" classname.to-view="tabClass('prompt')">Prompt</a>
+      <a href="/output" classname.to-view="tabClass('output')">Output</a>
+    </nav>
+
+    <div class="status-cluster">
+      <span class="pending-dot" if="pendingActive" title="Work in flight">Saving…</span>
+      <a href="/connect" classname.to-view="badgeClass" title.to-view="badgeTitle">${badgeText}</a>
+      <span if="showCountdown" classname.to-view="countdownClass" title="Time until the server forgets your API key">${countdownText}</span>
+      <button type="button" class="btn btn-ghost btn-sm" if="canLock" click.calls="lock()" title="Forget the API key on the server now (the encrypted copy stays in this browser)">Lock</button>
+    </div>
+  </header>
+
+  <div class="toast" if="toast">${toast}</div>
+
+  <main class="content">
+    <outlet name="main"></outlet>
+  </main>
+</div>

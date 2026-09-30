@@ -1,0 +1,35 @@
+<section class="page">
+  <div classname.to-view="dropClass" dragover.calls="onDragOver($event)" dragleave.calls="onDragLeave()" drop.calls="onDrop($event)" title.to-view="tip('source.upload.drop')">
+    <div class="upload-row">
+      <label class="btn btn-primary file-btn" title.to-view="tip('source.upload.choose')">
+        <span>Choose a file…</span>
+        <input type="file" class="visually-hidden" accept=".md,.txt,.markdown,.text,text/plain,text/markdown" change.calls="onFile($event)">
+      </label>
+      <span class="muted">or drop a .md / .txt file anywhere in this box</span>
+      <span class="muted" if="uploading">Uploading…</span>
+      <span class="muted" if="loading">Restoring the last document…</span>
+    </div>
+    <p class="error" if="error">${error}</p>
+  </div>
+
+  <div class="panel stats" if="hasDoc">
+    <div class="stat" title.to-view="tip('source.stats.file')"><span class="k">File</span><span class="v mono">${docName}</span></div>
+    <div class="stat" title.to-view="tip('source.stats.tokens')"><span class="k">${tokensLabel}</span><span class="v emph">${tokens}</span></div>
+    <div class="stat" title.to-view="tip('source.stats.words')"><span class="k">Words</span><span class="v">${words}</span></div>
+    <div class="stat" title.to-view="tip('source.stats.pages')"><span class="k">≈ Pages</span><span class="v">${pages}</span></div>
+    <div class="stat" title.to-view="tip('source.stats.paragraphs')"><span class="k">Paragraphs</span><span class="v">${paragraphs}</span></div>
+    <div class="stat dim" title.to-view="tip('source.stats.characters')"><span class="k">Characters</span><span class="v">${chars}</span></div>
+    <button type="button" class="btn btn-ghost btn-sm" click.calls="clearDoc()" title.to-view="tip('source.upload.remove')">Remove</button>
+  </div>
+
+  <div class="panel selection-bar" if="hasDoc">
+    <span class="sel-group" if="hasSelection">
+      <span class="sel-tokens" title.to-view="tip('source.selection.tokens')">${selTokensText}</span>
+      <span class="sel-chars" title.to-view="tip('source.selection.chars')">${selCharsText}</span>
+    </span>
+    <span else-if="!hasSelection" class="muted" title.to-view="tip('source.viewer.text')">Select any span below — a single line is fine — to use it as the preview focus.</span>
+    <button type="button" class="btn btn-ghost btn-sm" if="hasSelection" click.calls="clearSelection()" title.to-view="tip('source.selection.clear')">Clear selection</button>
+  </div>
+
+  <div class="viewer-host"></div>
+</section>

@@ -1,0 +1,57 @@
+<section class="page output-page">
+  <div class="panel" if="!hasJob">
+    <h2>No job yet</h2>
+    <p class="muted">Set up a prompt and press <em>Start job</em> on the Prompt tab. Finished output appears here and can be saved at any time.</p>
+  </div>
+
+  <div if="hasJob">
+    <div class="panel status-row">
+      <span classname.to-view="statusClass" title.to-view="tip('output.status.state')">${statusText}</span>
+      <span class="mono">${sourceName}</span>
+      <span title.to-view="tip('output.status.progress')">${progressText}</span>
+      <span class="muted" title.to-view="tip('output.status.eta')">${etaText}</span>
+      <span class="muted" if="tokensText" title.to-view="tip('output.status.tokens')">${tokensText}</span>
+      <span class="muted" title.to-view="tip('output.status.where')">${whereText}</span>
+      <span class="muted" if="socketText" title.to-view="tip('output.status.socket')">${socketText}</span>
+    </div>
+
+    <progress class="bar" value.to-view="doneCount" max.to-view="totalCount"></progress>
+
+    <div class="banner warn" if="keyExpired">
+      <span>The API key expired while this job was running. Unlock it again to continue.</span>
+      <button type="button" class="btn btn-primary btn-sm" click.calls="goConnect()">Unlock</button>
+    </div>
+
+    <div class="controls">
+      <button type="button" class="btn" disabled.to-view="!canPause" click.calls="pause()" title.to-view="tip('output.controls.pause')">Pause</button>
+      <button type="button" class="btn" disabled.to-view="!canResume" click.calls="resume()" title.to-view="tip('output.controls.resume')">Resume</button>
+      <button type="button" class="btn btn-danger" disabled.to-view="!canCancel" click.calls="cancel()" title.to-view="tip('output.controls.cancel')">Cancel</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn btn-primary" disabled.to-view="!hasOutput" click.calls="save()" title.to-view="tip('output.controls.save')">Save output (${outputName})</button>
+      <button type="button" class="btn" disabled.to-view="!hasOutput" click.calls="copy()" title.to-view="tip('output.controls.copy')">Copy</button>
+    </div>
+    <p class="error" if="lastError">${lastError}</p>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Windows</h2>
+        <span class="muted" title.to-view="tip('output.windows.chips')">click a window to run it again</span>
+        <span class="legend" title.to-view="tip('output.windows.legend')"><i class="sw pending"></i>pending <i class="sw running"></i>running <i class="sw ok"></i>ok <i class="sw flagged"></i>flagged <i class="sw failed"></i>failed</span>
+      </div>
+      <div class="chips">
+        <button type="button" repeat.for="c of chips" classname.to-view="chipClass(c)" title.to-view="c.detail" click.calls="rerun(c)">${c.index + 1}</button>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="panel col-grow">
+        <div class="panel-head"><h2 title.to-view="tip('output.output.text')">Output</h2><span class="muted">${outputChars} chars</span></div>
+        <textarea class="mono output-text" readonly value.to-view="output"></textarea>
+      </div>
+      <div class="panel" if="hasLive">
+        <div class="panel-head"><h2 title.to-view="tip('output.output.live')">Live</h2><span class="muted">streaming</span></div>
+        <pre class="mono live">${liveText}</pre>
+      </div>
+    </div>
+  </div>
+</section>

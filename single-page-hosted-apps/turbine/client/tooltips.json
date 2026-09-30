@@ -1,0 +1,132 @@
+{
+  "source": {
+    "upload": {
+      "choose": "Pick a plain-text or Markdown file from your computer. Turbine reads it here in the browser and keeps a copy on the server so a job can keep running when this tab is closed.",
+      "drop": "You can also drag a .md or .txt file from your desktop and drop it anywhere in this box.",
+      "remove": "Forget this document in Turbine. The original file on your computer is untouched."
+    },
+    "stats": {
+      "file": "The file you loaded.",
+      "characters": "Every letter, space and punctuation mark, counted once. Character positions are what selections are measured in.",
+      "words": "Whitespace-separated words. A printed page holds about 275.",
+      "tokens": "Tokens are the pieces a language model actually reads, roughly three quarters of an English word each. This is what fills the model's context and what you pay for. Estimated from the text; exact once the tokenizer has loaded.",
+      "pages": "Estimated printed pages at 275 words per page.",
+      "paragraphs": "Blocks separated by a blank line. The viewer renders them in batches, and windows prefer to end at a paragraph boundary."
+    },
+    "selection": {
+      "tokens": "How much of the model's attention the highlighted text takes. Counted exactly with the built-in tokenizer once it has loaded (before that it is an estimate), and replaced by the model's own count after a preview.",
+      "chars": "Character positions of the highlighted span in the file: where it starts, where it ends, how long it is. Useful for repeating a selection; not what the model measures.",
+      "clear": "Drop the highlight. Preview will go back to using the first planned window."
+    },
+    "viewer": {
+      "jump": "Jump to a place in the document by percentage, 0 to 100.",
+      "load_more": "Show the next batch of paragraphs. Long books load in chunks so scrolling stays smooth.",
+      "text": "Select any span, even a single line, to use it as the preview focus. The highlight is remembered on the Prompt tab."
+    }
+  },
+  "prompt": {
+    "instructions": {
+      "system": "Your standing orders, sent with every window as the system message: what the model should do to each piece of text and what it must leave alone.",
+      "reset": "Restore Turbine's default prompts: careful Markdown cleanup that preserves the author's words."
+    },
+    "template": {
+      "user": "How each window is packaged for the model. {{focus}} is the slice to transform; the context blocks are read-only neighbours; anything inside {{#name}}…{{/name}} appears only when that variable has content.",
+      "chips": "Click to insert this variable at the cursor."
+    },
+    "window": {
+      "focus_tokens": "How big each slice to transform is, in tokens. Bigger slices mean fewer windows and more coherent output, but each call takes longer and a failure loses more.",
+      "context_before": "Read-only text shown to the model just before the slice, so it knows what it is continuing from. Never transformed, never repeated in the output.",
+      "context_after": "Read-only text shown just after the slice, so the model knows what comes next. Never transformed, never repeated in the output.",
+      "snap": "Where a slice is allowed to end: at a paragraph break (cleanest), at the end of a sentence, or simply at the nearest space.",
+      "only_selection": "Run the job on the highlighted selection only, instead of the whole document."
+    },
+    "run": {
+      "mode": "map: windows run side by side and are stitched together by position. fold: windows run one after another and each sees the tail of the previous output. Use fold when continuity matters, such as numbering or a running tone.",
+      "concurrency": "How many windows run at the same time in map mode. A local machine usually handles one or two; hosted APIs handle more.",
+      "carry_kind": "In fold mode, what each window gets from the one before it: the tail of the previous output, or nothing.",
+      "carry_chars": "How many characters of the previous output to carry forward.",
+      "temperature": "How adventurous the model is. 0 is literal and repeatable; higher values add variety. Formatting jobs want it low.",
+      "max_tokens": "The most the model may write for one window. Auto keeps it at about 1.5× the largest slice plus a margin, so nothing is cut off. A manual value smaller than a slice will truncate that window's output.",
+      "max_tokens_auto": "Let Turbine size the output limit from the largest slice in the plan and the model's context. Untick to set it by hand.",
+      "validator": "A check on every window's output before it is accepted. conserve: the words must survive and only formatting may change. length ratio: the output must stay within a size band of the input.",
+      "threshold": "Minimum similarity for conserve, from 0 to 1. Turbine strips Markdown from the output, normalises case, quotes and punctuation, then compares the two word sequences with a longest-common-subsequence match. 1.0 means every word survived in order; 0.95 tolerates about one word in twenty added, dropped or changed. Raise it for pure formatting, lower it for translation or rewriting.",
+      "min_ratio": "Smallest acceptable output length as a fraction of the input length. 0.5 means the output may shrink to half.",
+      "max_ratio": "Largest acceptable output length as a multiple of the input length. 2 means the output may double.",
+      "attempts": "How many tries a window gets. Each retry lowers the temperature. After the last try the best attempt is kept and the window is flagged for review."
+    },
+    "plan": {
+      "windows": "How many slices the document (or the selection) splits into with the current settings.",
+      "avg_prompt": "Average size of what the model reads per window: instructions, template, context and focus.",
+      "max_prompt": "The biggest single prompt in the plan. It must fit inside the model's context together with the output limit.",
+      "ctx": "The model's context length from your connection settings. Prompt plus output must fit inside it.",
+      "total_tokens": "Everything the model will read and write across the whole job, added up. Roughly what the job costs.",
+      "eta": "Wall-clock estimate. Until you run a preview it assumes 20 seconds per window; afterwards it uses the speed the preview measured.",
+      "truncate": "The output limit is smaller than the largest slice, so that window's output may be cut off mid-text.",
+      "start": "Create the job and start it. It runs on the server (or in this tab for a local backend under a public deployment) and you can watch it on the Output tab."
+    },
+    "focus": {
+      "header": "The text Preview will transform. Select any span in the viewer; with no selection the first planned window is used.",
+      "tokens": "Size of the focus in tokens. Exact with the built-in tokenizer; the model's own count is shown after a preview.",
+      "clear": "Drop the selection and go back to previewing the first window."
+    },
+    "preview": {
+      "run": "Send just this focus to the model with the real instructions and context, and stream the result here. Nothing is saved.",
+      "stop": "Abandon this preview.",
+      "messages": "The exact messages the model receives after the template is filled in.",
+      "output": "The model's answer, streaming in. The pane follows the newest text while you are at the bottom; scroll up to read, scroll back down to follow again.",
+      "tokens": "Tokens generated so far, refreshed about once a second. When the model finishes, its exact count replaces the running figure."
+    }
+  },
+  "output": {
+    "status": {
+      "state": "Where the job is: running, paused, completed, cancelled, halted on an error, or waiting for you to unlock an expired key.",
+      "progress": "Windows finished out of the total, with any flagged (failed validation) or failed (no usable output) counts.",
+      "eta": "Time so far and the remaining-time estimate based on the windows completed in this run.",
+      "tokens": "Tokens the model has read and written so far, as reported by the backend.",
+      "where": "Which connection and model are doing the work, and whether the calls come from the server or this tab.",
+      "socket": "State of the live event stream from the server. It reconnects on its own."
+    },
+    "controls": {
+      "pause": "Let the windows already in flight finish, then stop starting new ones.",
+      "resume": "Continue from the checkpoint. Finished windows are not redone.",
+      "cancel": "Stop the job for good. Everything finished so far stays saved and can still be downloaded.",
+      "save": "Download the output as it exists right now, named after the source with __transformed added. Windows still pending are marked in the file.",
+      "copy": "Copy the current output to the clipboard."
+    },
+    "windows": {
+      "chips": "One square per window in document order. Grey is pending, blue is running, green is done, amber failed validation, red produced nothing usable. Click one to run it again.",
+      "legend": "What the colours mean."
+    },
+    "output": {
+      "text": "All finished windows stitched together in order. Failed windows pass their original text through behind a marker so nothing is silently lost.",
+      "live": "Windows currently being generated, streaming in. Follows the newest text while you are at the bottom."
+    }
+  },
+  "connect": {
+    "mode": {
+      "local": "Use a model running on your own machine or network: Ollama, vLLM or llama.cpp. No API key and no passphrase.",
+      "remote": "Use a hosted API such as OpenRouter, OpenAI or Anthropic. You will need an API key, protected here by a passphrase."
+    },
+    "local": {
+      "backend": "Which local server you are running. Ollama speaks its own API; vLLM and llama.cpp speak the OpenAI-style API.",
+      "scheme": "http for a plain local server; https if you put it behind TLS.",
+      "host": "Where the server is: localhost for this machine, or a name or address on your network.",
+      "port": "The port the server listens on. Ollama defaults to 11434, vLLM to 8000, llama.cpp to 8080.",
+      "path": "Extra path after the port, usually /v1 for vLLM and llama.cpp and empty for Ollama."
+    },
+    "model": "The model id exactly as the backend knows it. Use List models to see what is available.",
+    "list_models": "Ask the backend which models it has and pick one.",
+    "ctx_len": "How many tokens the model can hold at once, prompt and answer together. Turbine plans windows to stay inside it.",
+    "remote": {
+      "provider": "The hosted service to call.",
+      "base_url": "The API's base address. Filled in for known providers; edit it for a custom OpenAI-compatible server.",
+      "api_key": "Your key for the provider. It is encrypted in this browser under your passphrase and held by the server only in memory, until the session timer runs out.",
+      "passphrase": "A short phrase only you know. It unlocks the encrypted key on later visits. It is never sent anywhere."
+    },
+    "test": "Check that the backend answers and that the model exists, without starting anything.",
+    "connect": "Save this connection in this browser and start using it.",
+    "unlock": "Decrypt the saved key with your passphrase and reconnect.",
+    "forget": "Erase the connection and the encrypted key from this browser.",
+    "different": "Set up another connection instead of the saved one."
+  }
+}
