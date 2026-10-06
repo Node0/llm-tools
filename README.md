@@ -5,7 +5,7 @@ Small, sharp tools for working with language models. Swiss army knife tools as s
 
 ## Static single-page apps
 
-Self-contained HTML files in **[`single-page-static-apps/`](single-page-apps/)**. Open them in a browser; no server, no build.
+Self-contained HTML files in **[`single-page-apps/`](single-page-apps/)**. Open them in a browser; no server, no build.
 
 | App | What it does | Try it |
 |---|---|---|
